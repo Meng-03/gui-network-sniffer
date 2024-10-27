@@ -39,14 +39,20 @@ class Ui_MainWindow(object):
         self.tableView_3.setObjectName(u"tableView_3")
         self.tableView_3.setGeometry(QRect(340, 330, 301, 201))
         self.pkgtable = QTableWidget(self.centralwidget)
-        if (self.pkgtable.columnCount() < 3):
-            self.pkgtable.setColumnCount(3)
+        if (self.pkgtable.columnCount() < 6):
+            self.pkgtable.setColumnCount(6)
         __qtablewidgetitem = QTableWidgetItem()
         self.pkgtable.setHorizontalHeaderItem(0, __qtablewidgetitem)
         __qtablewidgetitem1 = QTableWidgetItem()
         self.pkgtable.setHorizontalHeaderItem(1, __qtablewidgetitem1)
         __qtablewidgetitem2 = QTableWidgetItem()
         self.pkgtable.setHorizontalHeaderItem(2, __qtablewidgetitem2)
+        __qtablewidgetitem3 = QTableWidgetItem()
+        self.pkgtable.setHorizontalHeaderItem(3, __qtablewidgetitem3)
+        __qtablewidgetitem4 = QTableWidgetItem()
+        self.pkgtable.setHorizontalHeaderItem(4, __qtablewidgetitem4)
+        __qtablewidgetitem5 = QTableWidgetItem()
+        self.pkgtable.setHorizontalHeaderItem(5, __qtablewidgetitem5)
         self.pkgtable.setObjectName(u"pkgtable")
         self.pkgtable.setGeometry(QRect(10, 50, 631, 271))
         MainWindow.setCentralWidget(self.centralwidget)
@@ -64,10 +70,16 @@ class Ui_MainWindow(object):
         self.ButtonStart.setText(QCoreApplication.translate("MainWindow", u"\u5f00\u59cb", None))
         self.ButtonStop.setText(QCoreApplication.translate("MainWindow", u"\u505c\u6b62", None))
         ___qtablewidgetitem = self.pkgtable.horizontalHeaderItem(0)
-        ___qtablewidgetitem.setText(QCoreApplication.translate("MainWindow", u"\u539f\u5730\u5740", None));
+        ___qtablewidgetitem.setText(QCoreApplication.translate("MainWindow", u"\u65f6\u95f4", None));
         ___qtablewidgetitem1 = self.pkgtable.horizontalHeaderItem(1)
-        ___qtablewidgetitem1.setText(QCoreApplication.translate("MainWindow", u"\u76ee\u7684\u5730\u5740", None));
+        ___qtablewidgetitem1.setText(QCoreApplication.translate("MainWindow", u"\u6e90\u5730\u5740", None));
         ___qtablewidgetitem2 = self.pkgtable.horizontalHeaderItem(2)
-        ___qtablewidgetitem2.setText(QCoreApplication.translate("MainWindow", u"\u534f\u8bae", None));
+        ___qtablewidgetitem2.setText(QCoreApplication.translate("MainWindow", u"\u76ee\u7684\u5730\u5740", None));
+        ___qtablewidgetitem3 = self.pkgtable.horizontalHeaderItem(3)
+        ___qtablewidgetitem3.setText(QCoreApplication.translate("MainWindow", u"\u534f\u8bae\u7c7b\u578b", None));
+        ___qtablewidgetitem4 = self.pkgtable.horizontalHeaderItem(4)
+        ___qtablewidgetitem4.setText(QCoreApplication.translate("MainWindow", u"\u957f\u5ea6", None));
+        ___qtablewidgetitem5 = self.pkgtable.horizontalHeaderItem(5)
+        ___qtablewidgetitem5.setText(QCoreApplication.translate("MainWindow", u"\u5185\u5bb9", None));
     # retranslateUi
 

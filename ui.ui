@@ -71,7 +71,12 @@
     </property>
     <column>
      <property name="text">
-      <string>原地址</string>
+      <string>时间</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>源地址</string>
      </property>
     </column>
     <column>
@@ -81,7 +86,17 @@
     </column>
     <column>
      <property name="text">
-      <string>协议</string>
+      <string>协议类型</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>长度</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>内容</string>
      </property>
     </column>
    </widget>
