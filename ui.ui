@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>669</width>
-    <height>560</height>
+    <width>808</width>
+    <height>704</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +17,7 @@
    <widget class="QPushButton" name="ButtonStart">
     <property name="geometry">
      <rect>
-      <x>520</x>
+      <x>670</x>
       <y>10</y>
       <width>51</width>
       <height>31</height>
@@ -30,7 +30,7 @@
    <widget class="QPushButton" name="ButtonStop">
     <property name="geometry">
      <rect>
-      <x>590</x>
+      <x>730</x>
       <y>10</y>
       <width>51</width>
       <height>31</height>
@@ -40,34 +40,27 @@
      <string>停止</string>
     </property>
    </widget>
-   <widget class="QTableView" name="tableView_2">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>330</y>
-      <width>321</width>
-      <height>201</height>
-     </rect>
-    </property>
-   </widget>
    <widget class="QTableView" name="tableView_3">
     <property name="geometry">
      <rect>
-      <x>340</x>
-      <y>330</y>
-      <width>301</width>
-      <height>201</height>
+      <x>400</x>
+      <y>380</y>
+      <width>401</width>
+      <height>281</height>
      </rect>
     </property>
    </widget>
-   <widget class="QTableWidget" name="pkgtable">
+   <widget class="QTableWidget" name="PacketTable">
     <property name="geometry">
      <rect>
       <x>10</x>
       <y>50</y>
-      <width>631</width>
-      <height>271</height>
+      <width>791</width>
+      <height>321</height>
      </rect>
+    </property>
+    <property name="autoScroll">
+     <bool>true</bool>
     </property>
     <column>
      <property name="text">
@@ -96,7 +89,25 @@
     </column>
     <column>
      <property name="text">
-      <string>内容</string>
+      <string>信息</string>
+     </property>
+    </column>
+   </widget>
+   <widget class="QTreeWidget" name="PacketTree">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>380</y>
+      <width>381</width>
+      <height>281</height>
+     </rect>
+    </property>
+    <attribute name="headerVisible">
+     <bool>false</bool>
+    </attribute>
+    <column>
+     <property name="text">
+      <string notr="true">1</string>
      </property>
     </column>
    </widget>
