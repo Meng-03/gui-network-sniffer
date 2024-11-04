@@ -121,9 +121,9 @@ class PcapThread(QThread):
             # 0x0806: 'ARP',
             # 0x8035: 'RARP'
             # 最后一个是帧的类型
-            parsepacket.eth_parse(raw_buf)
+            # parsepacket.eth_parse(raw_buf)
 
-            
+            parsepacket.parse(raw_buf)
             
             
             # # ARP/RARP
@@ -214,25 +214,34 @@ class PacketParser:
         self.NETWORK_LAYER_PROTOCOLS = NETWORK_LAYER_PROTOCOLS
         self.TRANSPORT_LAYER_PROTOCOLS = TRANSPORT_LAYER_PROTOCOLS
         self.APP_LAYER_PORTS = APP_LAYER_PORTS
-        self.parsedetails={
-            "raw_buf":b'',
-            "Ethernet II":[],
-            
-        }
+        self.parsedetails={}
         
         
-    def parse(self):
+    def parse(self,raw_data):
         """
         数据包整体解析,根据parsedetails字典中包含的项,分别调用不同的协议解析函数，进行解析
         """
         self.parsedetails={
             "raw_buf":b'',
             "datalinker":[],
-            "networklayer":[],
-            
+            "networklayer": {
+                "IP": [],         
+                "ICMP": []   #icmp若有的话     
+            },
+            "transportlayer":[],
+            "applicationlayer":[]
         }
+        # 解析数据链路层
+        self.eth_parse(raw_data)
+        # 
+        # 网络层解析
+        self.networklayer(raw_data)
+        
+        print(self.parsedetails)
+        
         return self.parsedetails
-      
+    
+    # eth
     def eth_parse(self,raw_data):
         """
         数据链路层
@@ -276,14 +285,15 @@ class PacketParser:
             "details": {}
         })
                  
-        print(self.parsedetails,"\n\n")
+        # print(self.parsedetails,"\n\n")
         return self.parsedetails
-        
-     
+             
+    # ip （icmp,igmp） arp
     def networklayer(self,raw_data):
         eth = dpkt.ethernet.Ethernet(raw_data)
         eth_type = eth.type
         # 网络层解析
+        print(hex(eth_type))
         if eth_type == dpkt.ethernet.ETH_TYPE_IP:
             self.ip_parse(eth.data)
         elif eth_type == dpkt.ethernet.ETH_TYPE_IP6:
@@ -298,17 +308,16 @@ class PacketParser:
                 "content": "Unknown",
                 "hex": hex(eth_type)
             })
-       
-       
-    def ip_parse(self, ip_data):
+         
+    def ip_parse(self, ipdata):
         """
         解析 IPv4 协议
         """
-        ip = dpkt.ip.IP(ip_data)
+        ip = ipdata
 
         # 版本
         version_binary = f"{ip.v:04b} ...."
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Version",
             "content": f"{version_binary} = Version: {ip.v}",
             "hex": hex(ip.v),
@@ -318,7 +327,7 @@ class PacketParser:
         # 头部长度
         header_length = ip.hl * 4
         header_length_binary = f".... {ip.hl:04b}"
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Header Length",
             "content": f"{header_length_binary} = Header Length: {header_length} bytes ({ip.hl})",
             "hex": hex(ip.hl),
@@ -331,7 +340,7 @@ class PacketParser:
         ecn = ip.tos & 0x03         # 后2位
         dscp_binary = f"{dscp:06b} .."
         ecn_binary = f".... ..{ecn:02b}"
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Differentiated Services Field",
             "content": f"0x{ip.tos:02x} (DSCP: {ip.tos >> 2}, ECN: {ip.tos & 0x3})",
             "hex": hex(ip.tos),
@@ -342,7 +351,7 @@ class PacketParser:
         })
 
         # 总长度
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Total Length",
             "content": f"Total Length: {ip.len:016b}",
             "hex": hex(ip.len),
@@ -350,7 +359,7 @@ class PacketParser:
         })
 
         # 标识符
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Identification",
             "content": f"Identification: {ip.id:016b}",
             "hex": hex(ip.id),
@@ -366,9 +375,9 @@ class PacketParser:
         more_fragments = flags & 0x1
         flags_binary = f"{reserved_bit:01b}{dont_fragment:01b}{more_fragments:01b} ...."
         
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Flags",
-            "content": f"0x{flags:02x}, {'Don\'t fragment' if dont_fragment else ''}",
+            "content": f"0x{flags:02x}",
             "hex": hex(flags),
             "details": {
                 "reserved_bit": f"{flags_binary} = Reserved bit: {'Set' if reserved_bit else 'Not set'}",
@@ -380,7 +389,7 @@ class PacketParser:
         
         # 片段偏移
         fragment_offset_binary = f"... {fragment_offset:013b}"
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Fragment Offset",
             "content": f"{fragment_offset_binary} = Fragment Offset: {fragment_offset}",
             "hex": hex(fragment_offset),
@@ -388,7 +397,7 @@ class PacketParser:
         })
 
         # 生存时间 (TTL)
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Time to Live",
             "content": f"Time to Live: {ip.ttl:08b}",
             "hex": hex(ip.ttl),
@@ -397,7 +406,7 @@ class PacketParser:
 
         # 协议
         protocol_name = self.TRANSPORT_LAYER_PROTOCOLS.get(ip.p, f"Protocol ({ip.p})")
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Protocol",
             "content": f"{protocol_name} ({ip.p})",
             "hex": hex(ip.p),
@@ -406,7 +415,7 @@ class PacketParser:
 
         # 头部校验和 (Header Checksum)
         checksum_hex = f"0x{ip.sum:04x}"
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Header Checksum",
             "content": f"Header Checksum: {checksum_hex}",
             "hex": checksum_hex,
@@ -416,7 +425,7 @@ class PacketParser:
         src_ip_decimal = f"{ip.src[0]}.{ip.src[1]}.{ip.src[2]}.{ip.src[3]}"
         src_ip_binary = '.'.join(f"{octet:08b}" for octet in ip.src)
 
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Source Address",
             "content": f"{src_ip_decimal} ({src_ip_binary})",
             "hex": ip.src.hex(),
@@ -427,12 +436,21 @@ class PacketParser:
         dst_ip_decimal = f"{ip.dst[0]}.{ip.dst[1]}.{ip.dst[2]}.{ip.dst[3]}"
         dst_ip_binary = '.'.join(f"{octet:08b}" for octet in ip.dst)
 
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Destination Address",
             "content": f"{dst_ip_decimal} ({dst_ip_binary})",
             "hex": ip.dst.hex(),
             "details": {}
         })
+
+
+        # 根据协议调用对应的传输层解析函数
+        if ip.p == dpkt.ip.IP_PROTO_TCP:
+            self.tcp_parse(ip.data)
+        elif ip.p == dpkt.ip.IP_PROTO_UDP:
+            self.udp_parse(ip.data)
+        elif ip.p == dpkt.ip.IP_PROTO_ICMP:
+            self.icmp_parse(ip.data)  
 
         return self.parsedetails  
         
@@ -440,11 +458,11 @@ class PacketParser:
         """
         解析 IPv6 协议
         """
-        ip6 = dpkt.ip6.IP6(ipv6_data)
+        ip6 = ipv6_data
 
         # 版本
         version_binary = f"{ip6.v:04b} ...."
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Version",
             "content": f"{version_binary} = Version: {ip6.v}",
             "hex": hex(ip6.v),
@@ -457,7 +475,7 @@ class PacketParser:
         dscp = (traffic_class & 0xfc) >> 2
         ecn = traffic_class & 0x3
         traffic_class_binary = f".... {traffic_class:08b} .... .... ...."
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Traffic Class",
             "content": f"{traffic_class_binary} = Traffic Class: {traffic_class_hex} (DSCP: CS{dscp}, ECN: {'Not-ECT' if ecn == 0 else f'ECT({ecn})'})",
             "hex": traffic_class_hex,
@@ -467,7 +485,7 @@ class PacketParser:
         # 流标签 (Flow Label)
         flow_label = ip6.flow & 0x000fffff
         flow_label_binary = f".... {flow_label:020b}"
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Flow Label",
             "content": f"{flow_label_binary} = Flow Label: 0x{flow_label:05x}",
             "hex": hex(flow_label),
@@ -475,7 +493,7 @@ class PacketParser:
         })
 
         # 载荷长度 (Payload Length)
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Payload Length",
             "content": f"Payload Length: {ip6.plen}",
             "hex": hex(ip6.plen),
@@ -485,7 +503,7 @@ class PacketParser:
         # 下一头部 (Next Header)
         next_header = ip6.nxt
         next_header_name = self.TRANSPORT_LAYER_PROTOCOLS.get(next_header, f"Protocol ({next_header})")
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Next Header",
             "content": f"Next Header: {next_header_name} ({next_header})",
             "hex": hex(next_header),
@@ -493,7 +511,7 @@ class PacketParser:
         })
 
         # 跳限制 (Hop Limit)
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Hop Limit",
             "content": f"Hop Limit: {ip6.hlim}",
             "hex": hex(ip6.hlim),
@@ -502,7 +520,7 @@ class PacketParser:
 
         # 源地址 (Source Address)
         src_ip6 = ':'.join(f"{ip6.src[i]:02x}{ip6.src[i+1]:02x}" for i in range(0, len(ip6.src), 2))
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Source Address",
             "content": src_ip6,
             "hex": ip6.src.hex(),
@@ -511,24 +529,34 @@ class PacketParser:
 
         # 目的地址 (Destination Address)
         dst_ip6 = ':'.join(f"{ip6.dst[i]:02x}{ip6.dst[i+1]:02x}" for i in range(0, len(ip6.dst), 2))
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Destination Address",
             "content": dst_ip6,
             "hex": ip6.dst.hex(),
             "details": {}
         })
+        
+        # 在解析 IPv6 时，根据传输层协议调用对应的解析函数
+        if ip6.nxt == dpkt.ip.IP_PROTO_TCP:
+            self.tcp_parse(ip6.data)
+        elif ip6.nxt == dpkt.ip.IP_PROTO_UDP:
+            self.udp_parse(ip6.data)
+        elif ip6.nxt == dpkt.ip.IP_PROTO_ICMP6:
+            self.icmpv6_parse(ip6.data) 
+        
+        
         return self.parsedetails
 
     def arp_parse(self, arp_data):
         """
         解析 ARP 协议
         """
-        arp = dpkt.arp.ARP(arp_data)
+        arp = arp_data
 
         # 硬件类型 (Hardware Type)
         hardware_type = arp.hrd
         hardware_type_str = "Ethernet" if hardware_type == 1 else f"Unknown ({hardware_type})"
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Hardware Type",
             "content": f"{hardware_type_str} ({hardware_type})",
             "hex": hex(hardware_type),
@@ -538,7 +566,7 @@ class PacketParser:
         # 协议类型 (Protocol Type)
         protocol_type = arp.pro
         protocol_type_str = "IPv4" if protocol_type == 0x0800 else f"Unknown (0x{protocol_type:04x})"
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Protocol Type",
             "content": f"{protocol_type_str} (0x{protocol_type:04x})",
             "hex": hex(protocol_type),
@@ -547,7 +575,7 @@ class PacketParser:
 
         # 硬件大小 (Hardware Size)
         hardware_size = arp.hln
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Hardware Size",
             "content": str(hardware_size),
             "hex": hex(hardware_size),
@@ -556,7 +584,7 @@ class PacketParser:
 
         # 协议大小 (Protocol Size)
         protocol_size = arp.pln
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Protocol Size",
             "content": str(protocol_size),
             "hex": hex(protocol_size),
@@ -566,7 +594,7 @@ class PacketParser:
         # 操作码 (Opcode)
         opcode = arp.op
         opcode_str = "request" if opcode == 1 else "reply" if opcode == 2 else f"Unknown ({opcode})"
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Opcode",
             "content": f"{opcode_str} ({opcode})",
             "hex": hex(opcode),
@@ -575,7 +603,7 @@ class PacketParser:
 
         # 发送方 MAC 地址 (Sender MAC Address)
         sender_mac = ':'.join(f"{b:02x}" for b in arp.sha)
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Sender MAC Address",
             "content": f"Sender MAC Address: {sender_mac}",
             "hex": arp.sha.hex(),
@@ -584,7 +612,7 @@ class PacketParser:
 
         # 发送方 IP 地址 (Sender IP Address)
         sender_ip = '.'.join(str(b) for b in arp.spa)
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Sender IP Address",
             "content": f"Sender IP Address: {sender_ip}",
             "hex": arp.spa.hex(),
@@ -593,7 +621,7 @@ class PacketParser:
 
         # 目标 MAC 地址 (Target MAC Address)
         target_mac = ':'.join(f"{b:02x}" for b in arp.tha)
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Target MAC Address",
             "content": f"Target MAC Address: {target_mac}",
             "hex": arp.tha.hex(),
@@ -602,7 +630,7 @@ class PacketParser:
 
         # 目标 IP 地址 (Target IP Address)
         target_ip = '.'.join(str(b) for b in arp.tpa)
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Target IP Address",
             "content": "Target IP Address: {target_ip}",
             "hex": arp.tpa.hex(),
@@ -615,12 +643,12 @@ class PacketParser:
         """
         解析 RARP 协议 (与 ARP 类似)
         """
-        rarp = dpkt.arp.ARP(rarp_data)
+        rarp = rarp_data
 
         # 硬件类型 (Hardware Type)
         hardware_type = rarp.hrd
         hardware_type_str = "Ethernet" if hardware_type == 1 else f"Unknown ({hardware_type})"
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Hardware Type",
             "content": f"{hardware_type_str} ({hardware_type})",
             "hex": hex(hardware_type),
@@ -630,7 +658,7 @@ class PacketParser:
         # 协议类型 (Protocol Type)
         protocol_type = rarp.pro
         protocol_type_str = "IPv4" if protocol_type == 0x0800 else f"Unknown (0x{protocol_type:04x})"
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Protocol Type",
             "content": f"{protocol_type_str} (0x{protocol_type:04x})",
             "hex": hex(protocol_type),
@@ -639,7 +667,7 @@ class PacketParser:
 
         # 硬件大小 (Hardware Size)
         hardware_size = rarp.hln
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Hardware Size",
             "content": str(hardware_size),
             "hex": hex(hardware_size),
@@ -648,7 +676,7 @@ class PacketParser:
 
         # 协议大小 (Protocol Size)
         protocol_size = rarp.pln
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Protocol Size",
             "content": str(protocol_size),
             "hex": hex(protocol_size),
@@ -658,7 +686,7 @@ class PacketParser:
         # 操作码 (Opcode)
         opcode = rarp.op
         opcode_str = "request" if opcode == 3 else "reply" if opcode == 4 else f"Unknown ({opcode})"
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Opcode",
             "content": f"{opcode_str} ({opcode})",
             "hex": hex(opcode),
@@ -667,7 +695,7 @@ class PacketParser:
 
         # 发送方 MAC 地址 (Sender MAC Address)
         sender_mac = ':'.join(f"{b:02x}" for b in rarp.sha)
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Sender MAC Address",
             "content": f"Sender MAC Address: {sender_mac}",
             "hex": rarp.sha.hex(),
@@ -676,7 +704,7 @@ class PacketParser:
 
         # 发送方 IP 地址 (Sender IP Address)
         sender_ip = '.'.join(str(b) for b in rarp.spa)
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Sender IP Address",
             "content": f"Sender IP Address: {sender_ip}",
             "hex": rarp.spa.hex(),
@@ -685,7 +713,7 @@ class PacketParser:
 
         # 目标 MAC 地址 (Target MAC Address)
         target_mac = ':'.join(f"{b:02x}" for b in rarp.tha)
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Target MAC Address",
             "content": f"Target MAC Address: {target_mac}",
             "hex": rarp.tha.hex(),
@@ -694,7 +722,7 @@ class PacketParser:
 
         # 目标 IP 地址 (Target IP Address)
         target_ip = '.'.join(str(b) for b in rarp.tpa)
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Target IP Address",
             "content": "Target IP Address: {target_ip}",
             "hex": rarp.tpa.hex(),
@@ -702,9 +730,204 @@ class PacketParser:
         })
 
         return self.parsedetails
+     
         
+      
+    # icmp, icmpv6
+    def icmp_parse(self, icmp_data):
+        """
+        解析 ICMP 协议
+        """
+        icmp = icmp_data
 
+        # ICMP 类型 (Type)
+        icmp_type = icmp.type
+        type_description = {
+            0: "Echo Reply",
+            3: "Destination Unreachable",
+            8: "Echo Request",
+            # 可以根据需求扩展其他类型的描述
+        }.get(icmp_type, f"Unknown ({icmp_type})")
+        
+        self.parsedetails["networklayer"]["ICMP"].append({
+            "label": "ICMP Type",
+            "content": f"{type_description} ({icmp_type})",
+            "hex": hex(icmp_type),
+            "details": {}
+        })
 
+        # ICMP 代码 (Code)
+        icmp_code = icmp.code
+        code_description = {
+            0: "Net Unreachable",
+            1: "Host Unreachable",
+            2: "Protocol Unreachable",
+            3: "Port Unreachable",
+            # 可以根据需求扩展其他代码的描述
+        }.get(icmp_code, f"Unknown ({icmp_code})")
+        
+        self.parsedetails["networklayer"]["ICMP"].append({
+            "label": "ICMP Code",
+            "content": f"{code_description} ({icmp_code})",
+            "hex": hex(icmp_code),
+            "details": {}
+        })
+
+        # 校验和 (Checksum)
+        checksum_hex = f"0x{icmp.sum:04x}"
+        self.parsedetails["networklayer"]["ICMP"].append({
+            "label": "Checksum",
+            "content": f"Checksum: {checksum_hex} [correct]",
+            "hex": checksum_hex,
+            "details": {}
+        })
+
+        # 未使用字段 (Unused) — 一般用于 ICMP Destination Unreachable 消息
+        if icmp_type == 3:  # Destination Unreachable
+            unused_field = "00000000"  # 固定的未使用字段
+            self.parsedetails["networklayer"]["ICMP"].append({
+                "label": "Unused",
+                "content": unused_field,
+                "details": {}
+            })
+
+        return self.parsedetails 
+        
+    def icmpv6_parse(self, icmpv6_data):
+        """
+        解析 ICMPv6 协议（例如 Router Advertisement 类型）
+        """
+        icmpv6 = icmpv6_data
+
+        # ICMPv6 类型
+        icmpv6_type = icmpv6.type
+        type_description = {
+            134: "Router Advertisement",
+            133: "Router Solicitation",
+            # 可以根据需求添加其他类型的描述
+        }.get(icmpv6_type, f"Unknown ({icmpv6_type})")
+        self.parsedetails["networklayer"]["ICMP"].append({
+            "label": "ICMPv6 Type",
+            "content": f"{type_description} ({icmpv6_type})",
+            "hex": hex(icmpv6_type),
+            "details": {}
+        })
+
+        # ICMPv6 代码
+        icmpv6_code = icmpv6.code
+        self.parsedetails["networklayer"]["ICMP"].append({
+            "label": "ICMPv6 Code",
+            "content": f"Code: {icmpv6_code}",
+            "hex": hex(icmpv6_code),
+            "details": {}
+        })
+
+        # 校验和
+        checksum_hex = f"0x{icmpv6.sum:04x}"
+        self.parsedetails["networklayer"]["ICMP"].append({
+            "label": "Checksum",
+            "content": f"Checksum: {checksum_hex} [correct]",
+            "hex": checksum_hex,
+            "details": {}
+        })
+
+        # 跳数限制 (Cur hop limit)
+        cur_hop_limit = icmpv6.data[0]
+        self.parsedetails["networklayer"]["ICMP"].append({
+            "label": "Cur hop limit",
+            "content": f"Cur hop limit: {cur_hop_limit}",
+            "hex": hex(cur_hop_limit),
+            "details": {}
+        })
+
+        # 标志 (Flags)
+        flags = icmpv6.data[1]
+        prf = (flags & 0x18) >> 3  # Router preference (prf) 2 bits
+        prf_description = {0: "Low", 1: "Medium", 2: "High"}.get(prf, "Reserved")
+        self.parsedetails["networklayer"]["ICMP"].append({
+            "label": "Flags",
+            "content": f"Flags: 0x{flags:02x}, Prf (Default Router Preference): {prf_description}",
+            "hex": hex(flags),
+            "details": {}
+        })
+
+        # 路由器生存时间 (Router Lifetime)
+        router_lifetime = int.from_bytes(icmpv6.data[2:4], byteorder="big")
+        self.parsedetails["networklayer"]["ICMP"].append({
+            "label": "Router lifetime",
+            "content": f"Router lifetime (s): {router_lifetime}",
+            "hex": hex(router_lifetime),
+            "details": {}
+        })
+
+        # 可达时间 (Reachable Time)
+        reachable_time = int.from_bytes(icmpv6.data[4:8], byteorder="big")
+        self.parsedetails["networklayer"]["ICMP"].append({
+            "label": "Reachable time",
+            "content": f"Reachable time (ms): {reachable_time}",
+            "hex": hex(reachable_time),
+            "details": {}
+        })
+
+        # 重传计时器 (Retrans Timer)
+        retrans_timer = int.from_bytes(icmpv6.data[8:12], byteorder="big")
+        self.parsedetails["networklayer"]["ICMP"].append({
+            "label": "Retrans timer",
+            "content": f"Retrans timer (ms): {retrans_timer}",
+            "hex": hex(retrans_timer),
+            "details": {}
+        })
+
+        # ICMPv6 选项解析（例如源链路层地址、MTU、前缀信息等）
+        options = icmpv6.data[12:]
+        offset = 0
+        while offset < len(options):
+            option_type = options[offset]
+            option_length = options[offset + 1] * 8  # Option length is in units of 8 bytes
+            if option_type == 1:  # Source link-layer address
+                link_layer_address = ':'.join(f"{b:02x}" for b in options[offset + 2:offset + 2 + 6])
+                self.parsedetails["networklayer"]["ICMP"].append({
+                    "label": "ICMPv6 Option (Source link-layer address)",
+                    "content": f"Source link-layer address: {link_layer_address}",
+                    "hex": options[offset + 2:offset + 2 + 6].hex(),
+                    "details": {}
+                })
+            elif option_type == 5:  # MTU
+                mtu = int.from_bytes(options[offset + 4:offset + 8], byteorder="big")
+                self.parsedetails["networklayer"]["ICMP"].append({
+                    "label": "ICMPv6 Option (MTU)",
+                    "content": f"MTU: {mtu}",
+                    "hex": hex(mtu),
+                    "details": {}
+                })
+            elif option_type == 3:  # Prefix Information
+                prefix_length = options[offset + 2]
+                prefix_flags = options[offset + 3]
+                prefix_valid_lifetime = int.from_bytes(options[offset + 4:offset + 8], byteorder="big")
+                prefix_preferred_lifetime = int.from_bytes(options[offset + 8:offset + 12], byteorder="big")
+                prefix = ':'.join(f"{options[offset + 16 + i]:02x}" for i in range(16))
+                self.parsedetails["networklayer"]["ICMP"].append({
+                    "label": "ICMPv6 Option (Prefix Information)",
+                    "content": f"Prefix: {prefix}/{prefix_length}, Valid Lifetime: {prefix_valid_lifetime}s, Preferred Lifetime: {prefix_preferred_lifetime}s",
+                    "hex": options[offset + 16:offset + 32].hex(),
+                    "details": {}
+                })
+
+            offset += option_length
+
+        return self.parsedetails
+        
+        
+        
+    # tcp udp 
+    def tcp_parse(self,tcp_data):
+        return 0
+        
+    def udp_parse(seld,udp_data):
+        return 0
+    
+    
+    
 
 
     def get_protocols(self, raw_data):
@@ -712,6 +935,7 @@ class PacketParser:
         获取数据包中包含的协议栈
         """
         protocols = []
+        
         try:
             # 数据链路层
             protocols.append("eth") #未进行其他种类的抓包

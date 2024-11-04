@@ -1,0 +1,116 @@
+{
+    "raw_buf": "307bac693802603e5f8572da0800450000340000400040066a660acfb98308080404da130355cd9a281228b3b9ea8010080089c200000101080a2b629ef0d59abefb",
+    "datalinker": [
+        {
+            "label": "Destination MAC Address",
+            "content": "30:7b:ac:69:38:02",
+            "hex": "307bac693802",
+            "details": {
+                "lg_bit": ".... ..1 .... .... .... = LG bit: Globally unique address (factory default)",
+                "ig_bit": ".... ...1 .... .... .... = IG bit: Individual address (unicast)"
+            }
+        },
+        {
+            "label": "Source MAC Address",
+            "content": "60:3e:5f:85:72:da",
+            "hex": "603e5f8572da",
+            "details": {
+                "lg_bit": ".... ..1 .... .... .... = LG bit: Globally unique address (factory default)",
+                "ig_bit": ".... ...1 .... .... .... = IG bit: Individual address (unicast)"
+            }
+        },
+        {
+            "label": "Type",
+            "content": "IPv4",
+            "hex": "0x800",
+            "details": {}
+        }
+    ],
+    "networklayer": {
+        "IP": [
+            {
+                "label": "Version",
+                "content": "0100 .... = Version: 4",
+                "hex": "0x4",
+                "details": {}
+            },
+            {
+                "label": "Header Length",
+                "content": ".... 0101 = Header Length: 20 bytes (5)",
+                "hex": "0x5",
+                "details": {}
+            },
+            {
+                "label": "Differentiated Services Field",
+                "content": "0x00 (DSCP: 0, ECN: 0)",
+                "hex": "0x0",
+                "details": {
+                    "dscp": "000000 .. = Differentiated Services Codepoint: Default (0)",
+                    "ecn": ".... ..00 = Explicit Congestion Notification: Not ECN-Capable Transport (0)"
+                }
+            },
+            {
+                "label": "Total Length",
+                "content": "Total Length: 0000000000110100",
+                "hex": "0x34",
+                "details": {}
+            },
+            {
+                "label": "Identification",
+                "content": "Identification: 0000000000000000",
+                "hex": "0x0",
+                "details": {}
+            },
+            {
+                "label": "Flags",
+                "content": "0x02",
+                "hex": "0x2",
+                "details": {
+                    "reserved_bit": "010 .... = Reserved bit: Not set",
+                    "dont_fragment": ".1 .... = Don't fragment: Set",
+                    "more_fragments": "..0 .... = More fragments: Not set",
+                    "binary": "010 ...."
+                }
+            },
+            {
+                "label": "Fragment Offset",
+                "content": "... 0000000000000 = Fragment Offset: 0",
+                "hex": "0x0",
+                "details": {}
+            },
+            {
+                "label": "Time to Live",
+                "content": "Time to Live: 01000000",
+                "hex": "0x40",
+                "details": {}
+            },
+            {
+                "label": "Protocol",
+                "content": "TCP (6)",
+                "hex": "0x6",
+                "details": {}
+            },
+            {
+                "label": "Header Checksum",
+                "content": "Header Checksum: 0x6a66",
+                "hex": "0x6a66",
+                "details": {}
+            },
+            {
+                "label": "Source Address",
+                "content": "10.207.185.131 (00001010.11001111.10111001.10000011)",
+                "hex": "0acfb983",
+                "details": {}
+            },
+            {
+                "label": "Destination Address",
+                "content": "8.8.4.4 (00001000.00001000.00000100.00000100)",
+                "hex": "08080404",
+                "details": {}
+            }
+        ],
+        "ICMP": []
+    },
+    "transportlayer": [],
+    "applicationlayer": []
+}
