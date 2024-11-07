@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>808</width>
-    <height>704</height>
+    <width>1186</width>
+    <height>813</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +17,7 @@
    <widget class="QPushButton" name="ButtonStart">
     <property name="geometry">
      <rect>
-      <x>670</x>
+      <x>1040</x>
       <y>10</y>
       <width>51</width>
       <height>31</height>
@@ -30,7 +30,7 @@
    <widget class="QPushButton" name="ButtonStop">
     <property name="geometry">
      <rect>
-      <x>730</x>
+      <x>1100</x>
       <y>10</y>
       <width>51</width>
       <height>31</height>
@@ -43,10 +43,10 @@
    <widget class="QTableView" name="tableView_3">
     <property name="geometry">
      <rect>
-      <x>400</x>
-      <y>380</y>
-      <width>401</width>
-      <height>281</height>
+      <x>600</x>
+      <y>440</y>
+      <width>581</width>
+      <height>341</height>
      </rect>
     </property>
    </widget>
@@ -54,9 +54,9 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>50</y>
-      <width>791</width>
-      <height>321</height>
+      <y>70</y>
+      <width>1171</width>
+      <height>361</height>
      </rect>
     </property>
     <property name="autoScroll">
@@ -64,32 +64,32 @@
     </property>
     <column>
      <property name="text">
-      <string>时间</string>
+      <string>Time</string>
      </property>
     </column>
     <column>
      <property name="text">
-      <string>源地址</string>
+      <string>Source</string>
      </property>
     </column>
     <column>
      <property name="text">
-      <string>目的地址</string>
+      <string>Destination</string>
      </property>
     </column>
     <column>
      <property name="text">
-      <string>协议类型</string>
+      <string>Protocol</string>
      </property>
     </column>
     <column>
      <property name="text">
-      <string>长度</string>
+      <string>Length</string>
      </property>
     </column>
     <column>
      <property name="text">
-      <string>信息</string>
+      <string>Info</string>
      </property>
     </column>
    </widget>
@@ -97,9 +97,9 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>380</y>
-      <width>381</width>
-      <height>281</height>
+      <y>440</y>
+      <width>581</width>
+      <height>341</height>
      </rect>
     </property>
     <attribute name="headerVisible">

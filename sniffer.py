@@ -29,6 +29,7 @@ TRANSPORT_LAYER_PROTOCOLS = {
 APP_LAYER_PORTS = {
     80: 'HTTP',           # 超文本传输协议
     53: 'DNS',            # 域名系统
+    443: 'HTTPS',         # HTTPS 安全超文本传输协议
     # 21: 'FTP',            # 文件传输协议
     # 22: 'SSH',            # 安全外壳协议
     # 25: 'SMTP',           # 简单邮件传输协议
@@ -37,8 +38,7 @@ APP_LAYER_PORTS = {
     # 161: 'SNMP',          # 简单网络管理协议
     # 69: 'TFTP',           # 简单文件传输协议
     # 123: 'NTP',           # 网络时间协议
-    # 389: 'LDAP',          # 轻量目录访问协议
-    443: 'HTTPS',         # HTTPS 安全超文本传输协议
+    # 389: 'LDAP',          # 轻量目录访问协议 
     # 1883: 'MQTT',         # 消息队列遥测传输协议
     # 可扩展其他常见应用层协议端口
 }
@@ -80,10 +80,28 @@ class PcapThread(QThread):
             parsepacket=PacketParser()
             # 表格简单parse展示
             simpleparse=self.simple_parse(raw_buf,time_str)
-            # self.pkg_get.emit(raw_buf,time_str,src_ip, dst_ip, protocol_type,len_str,info)           
-
+            self.pkg_get.emit(
+                raw_buf,
+                simpleparse["Time"],
+                simpleparse["Source"],
+                simpleparse["Destination"],
+                simpleparse["Protocol"],
+                str(simpleparse["Length"]),
+                simpleparse["Info"]
+                )
+            # self.pkg_get.emit(raw_buf_hex,)           
+            # output={
+            #     'Time':time_str,
+            #     'Source':src,
+            #     'Destination':dst,
+            #     'Protocol':protocol_type,
+            #     'Length':len(raw_buf),
+            #     'Info':info
+            # }   
+            # print(output)               
+            # return output  
             # 细节parse
-            parsepacket.parse(raw_buf)
+            # parsepacket.parse(raw_buf)
                        
     
     def simple_parse(self,raw_buf,time_str):
@@ -276,21 +294,6 @@ class PcapThread(QThread):
         print(output)               
         return output                     
             
-    # def parsepkg(self,row):
-    #     """
-    #     解析数据包
-    #     """
-    #     parse_detail={}
-    #     Frame={}
-    #     Ethernet={}
-        
-    #     raw_buf=self.captured_packets[row]
-    #     print(raw_buf.hex())
-    #     raw_buf_hex=raw_buf.hex()
-    #     eth = dpkt.ethernet.Ethernet(raw_buf)
-    #     eth_hex=eth.hex()
-    #     print()
-    
     
     def save(self):
         """

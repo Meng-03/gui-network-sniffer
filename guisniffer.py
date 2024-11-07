@@ -1,6 +1,7 @@
 from sniffer import PcapThread
 from ui_ui import Ui_MainWindow
-from PySide6.QtWidgets import QMainWindow,QTableWidgetItem,QApplication,QTreeWidgetItem,QTreeWidget
+from PySide6.QtWidgets import QMainWindow,QTableWidgetItem,QApplication,QTreeWidgetItem
+from PySide6.QtGui import QColor
 import sys
 
 class MainWindow(QMainWindow,Ui_MainWindow):
@@ -16,6 +17,17 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.ButtonStart.clicked.connect(self.start_capture)
         self.ButtonStop.clicked.connect(self.stop_capture)
         
+        # 设置列宽
+        self.PacketTable.setColumnWidth(0, 80)  # Time 列宽度
+        self.PacketTable.setColumnWidth(1, 180)  # Source 列宽度
+        self.PacketTable.setColumnWidth(2, 180)  # Destination 列宽度
+        self.PacketTable.setColumnWidth(3, 80)  # Protocol 列宽度
+        self.PacketTable.setColumnWidth(4, 60)   # Length 列宽度
+        # 设置最后一列自动填充剩余空间
+        header = self.PacketTable.horizontalHeader()
+        header.setStretchLastSection(True)  # 最后一列设为可伸缩列
+        # 自动调整每行高度（可选）
+        self.PacketTable.resizeRowsToContents()
         
         # test
         details_text = {
@@ -76,7 +88,35 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.PacketTable.setItem(row_position, 3, QTableWidgetItem(protocol_type))
         self.PacketTable.setItem(row_position, 4, QTableWidgetItem(len_str))
         self.PacketTable.setItem(row_position, 5, QTableWidgetItem(info))
-       
+        # 设置行的背景颜色，基于协议类型
+        color = QColor(255, 255, 255)  # 默认白色
+        if protocol_type == "Unknown":
+            color = QColor(211, 211, 211)# 浅灰色
+        elif protocol_type == "ARP":
+            color = QColor(222,184,135)  # 浅棕
+        elif protocol_type == "IPv4":
+            color = QColor(255,250,205)  # 浅黄
+        elif protocol_type == "IPv6":
+            color = QColor(255,228,181)  # 浅橘
+        elif protocol_type == "ICMP":
+            color = QColor(255,192,203)  # 粉红
+        elif protocol_type == "ICMPv6":
+            color = QColor(255,182,193)  # 浅粉红
+        elif protocol_type == "TCP":
+            color = QColor(225,255,255)  # 浅蓝
+        elif protocol_type == "UDP":
+            color = QColor(230,230,250)  # 浅紫色
+        elif protocol_type == "HTTP":
+            color = QColor(152,251,152)  # 绿1
+        elif protocol_type == "DNS":
+            color = QColor(173,255,47)   # 绿2
+
+        # 为当前行的所有单元格设置背景颜色
+        for col in range(self.PacketTable.columnCount()):
+            item = self.PacketTable.item(row_position, col)
+            if item is not None:
+                item.setBackground(color)
+
        
     def parse_selected_packet(self,packet_details,row):
         """

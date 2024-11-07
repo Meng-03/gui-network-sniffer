@@ -23,18 +23,18 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(808, 704)
+        MainWindow.resize(1186, 813)
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.ButtonStart = QPushButton(self.centralwidget)
         self.ButtonStart.setObjectName(u"ButtonStart")
-        self.ButtonStart.setGeometry(QRect(670, 10, 51, 31))
+        self.ButtonStart.setGeometry(QRect(1040, 10, 51, 31))
         self.ButtonStop = QPushButton(self.centralwidget)
         self.ButtonStop.setObjectName(u"ButtonStop")
-        self.ButtonStop.setGeometry(QRect(730, 10, 51, 31))
+        self.ButtonStop.setGeometry(QRect(1100, 10, 51, 31))
         self.tableView_3 = QTableView(self.centralwidget)
         self.tableView_3.setObjectName(u"tableView_3")
-        self.tableView_3.setGeometry(QRect(400, 380, 401, 281))
+        self.tableView_3.setGeometry(QRect(600, 440, 581, 341))
         self.PacketTable = QTableWidget(self.centralwidget)
         if (self.PacketTable.columnCount() < 6):
             self.PacketTable.setColumnCount(6)
@@ -51,14 +51,14 @@ class Ui_MainWindow(object):
         __qtablewidgetitem5 = QTableWidgetItem()
         self.PacketTable.setHorizontalHeaderItem(5, __qtablewidgetitem5)
         self.PacketTable.setObjectName(u"PacketTable")
-        self.PacketTable.setGeometry(QRect(10, 50, 791, 321))
+        self.PacketTable.setGeometry(QRect(10, 70, 1171, 361))
         self.PacketTable.setAutoScroll(True)
         self.PacketTree = QTreeWidget(self.centralwidget)
         __qtreewidgetitem = QTreeWidgetItem()
         __qtreewidgetitem.setText(0, u"1");
         self.PacketTree.setHeaderItem(__qtreewidgetitem)
         self.PacketTree.setObjectName(u"PacketTree")
-        self.PacketTree.setGeometry(QRect(10, 380, 381, 281))
+        self.PacketTree.setGeometry(QRect(10, 440, 581, 341))
         self.PacketTree.header().setVisible(False)
         MainWindow.setCentralWidget(self.centralwidget)
         self.statusbar = QStatusBar(MainWindow)
@@ -75,16 +75,16 @@ class Ui_MainWindow(object):
         self.ButtonStart.setText(QCoreApplication.translate("MainWindow", u"\u5f00\u59cb", None))
         self.ButtonStop.setText(QCoreApplication.translate("MainWindow", u"\u505c\u6b62", None))
         ___qtablewidgetitem = self.PacketTable.horizontalHeaderItem(0)
-        ___qtablewidgetitem.setText(QCoreApplication.translate("MainWindow", u"\u65f6\u95f4", None));
+        ___qtablewidgetitem.setText(QCoreApplication.translate("MainWindow", u"Time", None));
         ___qtablewidgetitem1 = self.PacketTable.horizontalHeaderItem(1)
-        ___qtablewidgetitem1.setText(QCoreApplication.translate("MainWindow", u"\u6e90\u5730\u5740", None));
+        ___qtablewidgetitem1.setText(QCoreApplication.translate("MainWindow", u"Source", None));
         ___qtablewidgetitem2 = self.PacketTable.horizontalHeaderItem(2)
-        ___qtablewidgetitem2.setText(QCoreApplication.translate("MainWindow", u"\u76ee\u7684\u5730\u5740", None));
+        ___qtablewidgetitem2.setText(QCoreApplication.translate("MainWindow", u"Destination", None));
         ___qtablewidgetitem3 = self.PacketTable.horizontalHeaderItem(3)
-        ___qtablewidgetitem3.setText(QCoreApplication.translate("MainWindow", u"\u534f\u8bae\u7c7b\u578b", None));
+        ___qtablewidgetitem3.setText(QCoreApplication.translate("MainWindow", u"Protocol", None));
         ___qtablewidgetitem4 = self.PacketTable.horizontalHeaderItem(4)
-        ___qtablewidgetitem4.setText(QCoreApplication.translate("MainWindow", u"\u957f\u5ea6", None));
+        ___qtablewidgetitem4.setText(QCoreApplication.translate("MainWindow", u"Length", None));
         ___qtablewidgetitem5 = self.PacketTable.horizontalHeaderItem(5)
-        ___qtablewidgetitem5.setText(QCoreApplication.translate("MainWindow", u"\u4fe1\u606f", None));
+        ___qtablewidgetitem5.setText(QCoreApplication.translate("MainWindow", u"Info", None));
     # retranslateUi
 
