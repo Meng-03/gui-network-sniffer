@@ -1,5 +1,5 @@
 {
-    "raw_buf": "307bac693802603e5f8572da0800450000340000400040066a660acfb98308080404da130355cd9a281228b3b9ea8010080089c200000101080a2b629ef0d59abefb",
+    "raw_buf": "307bac693802603e5f8572da080045000243000040004006e5390acfb9836e292100d86b0fc6fa2654f837ab35e350181000b6e300001703030216b12d510836ea5bca0f4fab458c625305d09107cef26cd1ac92a3d97e85c61c3c5b4f8cfa1a545bccc57033236824b6d48d630326e6ec5707e4f57b4748074700c586c6a70758285d9dd734968dcb710e2c19e62746d8160f6226a61c4c4c781ecc7b29ddd7365113c9886e81e4313877ab3535645f80babaa144c7ddd3c556c5c71c21ea8a4c39f6dc46d7e37d92dffe3e67e5f16495c9ac54ee3d3132e621285d5c57bb4de728c1b63aaed1a8e6b901e4d38decc95ef74a6f88f216df8b7914094fdd52630bca74123c5086ffcf331d3ddb021f5af8e6a59719475bf81574f01539a3eb57aa0f2364d37a7d4b56f6ebec9c14e47b1425d75e512ca463c5dc6869094f6390704c9df8bc92ec8f4a7d0b2f8c608a3ec842d9ad46d2b194d519aed94341985decc4bcbf0bf9da10a5311e6a36b6152c4ca6549107b3a12bc76a5059308b9ee8416c27b9262b6064787312c722ca1e44d8848a82271318328b210994454e7c6a44b7a203d4926b2eca582e9a8fb335c9d801a404666a8e47d52c41cbf529b2d7ef8230d92713e034268a8ecb0d9dde78381f865e20343f7b3d56848e6514cb5459d398c256b6691aaca2e99db696669414083337a2bda391fadd5c32a5ab2437e2deed24144a4d2c0b48b04d510243e82dceac55863bb645a00ce89120f37d748711804b9eea4147f6e0e6f6370b7305a463f45ffd596fbff86440c4f8472e4438b799834e0c67b7fd4d5543cb898f579e",
     "datalinker": [
         {
             "label": "Destination MAC Address",
@@ -51,8 +51,8 @@
             },
             {
                 "label": "Total Length",
-                "content": "Total Length: 0000000000110100",
-                "hex": "0x34",
+                "content": "Total Length: 0000001001000011",
+                "hex": "0x243",
                 "details": {}
             },
             {
@@ -92,8 +92,8 @@
             },
             {
                 "label": "Header Checksum",
-                "content": "Header Checksum: 0x6a66",
-                "hex": "0x6a66",
+                "content": "Header Checksum: 0xe539",
+                "hex": "0xe539",
                 "details": {}
             },
             {
@@ -104,13 +104,79 @@
             },
             {
                 "label": "Destination Address",
-                "content": "8.8.4.4 (00001000.00001000.00000100.00000100)",
-                "hex": "08080404",
+                "content": "110.41.33.0 (01101110.00101001.00100001.00000000)",
+                "hex": "6e292100",
                 "details": {}
             }
         ],
         "ICMP": []
     },
-    "transportlayer": [],
-    "applicationlayer": []
+    "transportlayer": [
+        {
+            "label": "Source Port",
+            "content": "Source Port: 55403",
+            "hex": "0xd86b",
+            "details": {}
+        },
+        {
+            "label": "Destination Port",
+            "content": "Destination Port: 4038",
+            "hex": "0xfc6",
+            "details": {}
+        },
+        {
+            "label": "Sequence Number",
+            "content": "Sequence Number: 4196816120",
+            "hex": "0xfa2654f8",
+            "details": {}
+        },
+        {
+            "label": "Acknowledgment Number",
+            "content": "Acknowledgment Number: 933967331",
+            "hex": "0x37ab35e3",
+            "details": {}
+        },
+        {
+            "label": "Header Length",
+            "content": "Header Length: 20 bytes",
+            "hex": "0x5",
+            "details": {}
+        },
+        {
+            "label": "Flags",
+            "content": "PUSH | ACK",
+            "hex": "0x18",
+            "details": {
+                "FIN": "FIN: Not set",
+                "SYN": "SYN: Not set",
+                "RST": "RST: Not set",
+                "PUSH": "PUSH: Set",
+                "ACK": "ACK: Set",
+                "URG": "URG: Not set",
+                "ECE": "ECE: Not set",
+                "CWR": "CWR: Not set",
+                "NS": "NS: Not set"
+            }
+        },
+        {
+            "label": "Window Size",
+            "content": "Window: 4096",
+            "hex": "0x1000",
+            "details": {}
+        },
+        {
+            "label": "Checksum",
+            "content": "Checksum: (0xb6e3)",
+            "hex": "0xb6e3",
+            "details": {}
+        },
+        {
+            "label": "Urgent Pointer",
+            "content": "Urgent Pointer: {str(urgent_pointer)"
+        },
+        "hex": "0x0",
+        "details": {},
+    }
+],
+"applicationlayer": []
 }
