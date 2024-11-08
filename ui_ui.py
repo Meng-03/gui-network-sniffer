@@ -15,8 +15,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QHeaderView, QMainWindow, QPushButton,
-    QSizePolicy, QStatusBar, QTableView, QTableWidget,
+from PySide6.QtWidgets import (QApplication, QHeaderView, QMainWindow, QPlainTextEdit,
+    QPushButton, QSizePolicy, QStatusBar, QTableWidget,
     QTableWidgetItem, QTreeWidget, QTreeWidgetItem, QWidget)
 
 class Ui_MainWindow(object):
@@ -32,9 +32,6 @@ class Ui_MainWindow(object):
         self.ButtonStop = QPushButton(self.centralwidget)
         self.ButtonStop.setObjectName(u"ButtonStop")
         self.ButtonStop.setGeometry(QRect(1100, 10, 51, 31))
-        self.tableView_3 = QTableView(self.centralwidget)
-        self.tableView_3.setObjectName(u"tableView_3")
-        self.tableView_3.setGeometry(QRect(600, 440, 581, 341))
         self.PacketTable = QTableWidget(self.centralwidget)
         if (self.PacketTable.columnCount() < 6):
             self.PacketTable.setColumnCount(6)
@@ -60,6 +57,9 @@ class Ui_MainWindow(object):
         self.PacketTree.setObjectName(u"PacketTree")
         self.PacketTree.setGeometry(QRect(10, 440, 581, 341))
         self.PacketTree.header().setVisible(False)
+        self.PacketHex = QPlainTextEdit(self.centralwidget)
+        self.PacketHex.setObjectName(u"PacketHex")
+        self.PacketHex.setGeometry(QRect(600, 440, 581, 341))
         MainWindow.setCentralWidget(self.centralwidget)
         self.statusbar = QStatusBar(MainWindow)
         self.statusbar.setObjectName(u"statusbar")

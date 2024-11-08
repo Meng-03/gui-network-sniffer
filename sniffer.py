@@ -50,7 +50,23 @@ class PcapThread(QThread):
     def __init__(self,parent=None):
         super().__init__(parent)
         self.running=False #start/stop pcap
-        self.captured_packets=[{}]
+        self.captured_packets=[] #
+        self.protocol_filter = None
+        self.host_filter = None
+        self.port_filter = None
+        self.logic_operator = "and"
+       
+    def set_filter(self, protocol=None, host=None, port=None, logic="and"):
+        """设置过滤条件"""
+        self.protocol_filter = protocol
+        self.host_filter = host
+        self.port_filter = port
+        self.logic_operator = logic.lower()
+
+    def should_filter(self):
+        """检查是否需要过滤"""
+        return any([self.protocol_filter, self.host_filter, self.port_filter, self.content_filter])
+
     
     def start(self):
         self.running=True
@@ -71,38 +87,101 @@ class PcapThread(QThread):
         # print("设备",devs,sep='\n')
         devnum='en0'
         getpkg=pcap.pcap(name='en0',promisc=True,immediate=True,timeout_ms=50)
-        for timestamp, raw_buf in getpkg:        
-            raw_buf_hex=raw_buf.hex()
+        for timestamp, raw_buf in getpkg:   
+            if not self.running:
+                break    
+             
+            # raw_buf_hex=raw_buf.hex()
             # print("raw:",raw_buf_hex,"\n",raw_buf)  
             
             time_str=time.strftime('%H:%M:%S',time.localtime(timestamp))
-               
-            parsepacket=PacketParser()
-            # 表格简单parse展示
-            simpleparse=self.simple_parse(raw_buf,time_str)
-            self.pkg_get.emit(
-                raw_buf,
-                simpleparse["Time"],
-                simpleparse["Source"],
-                simpleparse["Destination"],
-                simpleparse["Protocol"],
-                str(simpleparse["Length"]),
-                simpleparse["Info"]
-                )
-            # self.pkg_get.emit(raw_buf_hex,)           
-            # output={
-            #     'Time':time_str,
-            #     'Source':src,
-            #     'Destination':dst,
-            #     'Protocol':protocol_type,
-            #     'Length':len(raw_buf),
-            #     'Info':info
-            # }   
-            # print(output)               
-            # return output  
+            
+            if not self.should_filter() or self.apply_filters(raw_buf):  
+                # parsepacket=PacketParser()
+                # 表格简单parse展示
+                simpleparse=self.simple_parse(raw_buf,time_str)
+                self.pkg_get.emit(
+                    raw_buf,
+                    simpleparse["Time"],
+                    simpleparse["Source"],
+                    simpleparse["Destination"],
+                    simpleparse["Protocol"],
+                    str(simpleparse["Length"]),
+                    simpleparse["Info"]
+                    ) 
             # 细节parse
             # parsepacket.parse(raw_buf)
-                       
+    def apply_filters(self, raw_buf):
+        """
+        检查数据包是否满足过滤条件。
+        """
+        eth = dpkt.ethernet.Ethernet(raw_buf)
+        result = True if self.logic_operator == "and" else False
+        
+        # 协议过滤
+        if self.protocol_filter:
+            protocol_match = self._filter_by_protocol(eth)
+            result = self._combine_results(result, protocol_match)
+        
+        # 主机和端口过滤
+        if self.host_filter or self.port_filter:
+            host_port_match = self._filter_by_host_port(eth)
+            result = self._combine_results(result, host_port_match)
+        
+        # 数据包内容过滤
+        if self.content_filter:
+            content_match = self._filter_by_content(eth)
+            result = self._combine_results(result, content_match)
+
+        return result
+    
+    def _combine_results(self, current_result, new_result):
+        if self.logic_operator == "and":
+            return current_result and new_result
+        elif self.logic_operator == "or":
+            return current_result or new_result
+        return False
+
+    def _filter_by_protocol(self, packet):
+        if self.protocol_filter.lower() == "tcp" and isinstance(packet.data, dpkt.tcp.TCP):
+            return True
+        elif self.protocol_filter.lower() == "udp" and isinstance(packet.data, dpkt.udp.UDP):
+            return True
+        elif self.protocol_filter.lower() == "icmp" and isinstance(packet.data, dpkt.icmp.ICMP):
+            return True
+        elif self.protocol_filter.lower() == "icmpv6" and isinstance(packet.data, dpkt.icmp6.ICMP6):
+            return True
+        elif self.protocol_filter.lower() == "arp" and isinstance(packet, dpkt.arp.ARP):
+            return True
+        elif self.protocol_filter.lower() == "ipv4" and isinstance(packet.data, dpkt.ip.IP):
+            return True
+        elif self.protocol_filter.lower() == "ipv6" and isinstance(packet.data, dpkt.ip6.IP6):
+            return True
+        return False  
+    
+
+    def _filter_by_host_port(self, packet):
+        # 确保 packet 包含 IPv4 或 IPv6 数据
+        if not isinstance(packet.data, (dpkt.ip.IP, dpkt.ip6.IP6)):
+            return False
+
+        # 获取源和目标 IP 地址（直接转换为可读的字符串格式）
+        ip_src = ".".join(map(str, packet.data.src)) if isinstance(packet.data, dpkt.ip.IP) else ":".join(f"{packet.data.src[i]:02x}{packet.data.src[i+1]:02x}" for i in range(0, 16, 2))
+        ip_dst = ".".join(map(str, packet.data.dst)) if isinstance(packet.data, dpkt.ip.IP) else ":".join(f"{packet.data.dst[i]:02x}{packet.data.dst[i+1]:02x}" for i in range(0, 16, 2))
+
+        # 获取源和目标端口号（仅适用于 TCP/UDP）
+        src_port = dst_port = None
+        if isinstance(packet.data.data, (dpkt.tcp.TCP, dpkt.udp.UDP)):
+            src_port = packet.data.data.sport
+            dst_port = packet.data.data.dport
+
+        # 检查主机和端口匹配情况
+        host_match = self.host_filter in [ip_src, ip_dst] if self.host_filter else True
+        port_match = self.port_filter in [src_port, dst_port] if self.port_filter else True
+
+        return host_match and port_match    
+    
+                      
     
     def simple_parse(self,raw_buf,time_str):
         protocol_type="Unknown"
@@ -279,8 +358,13 @@ class PcapThread(QThread):
                 info = f"IPv6 Packet with Next Header={next_header}"
         
         self.captured_packets.append({
-                "time":time_str,
-                "raw_buf":raw_buf
+                "raw_buf":raw_buf,
+                'Time':time_str,
+                'Source':src,
+                'Destination':dst,
+                'Protocol':protocol_type,
+                'Length':len(raw_buf),
+                'Info':info
                 })
         
         output={
@@ -311,12 +395,13 @@ class PacketParser:
         self.parsedetails={}
         
       
-    def parse(self,raw_data):
+    def parse(self,raw_data,row):
         """
         数据包整体解析,根据parsedetails字典中包含的项,分别调用不同的协议解析函数，进行解析
         """
         self.parsedetails={
             "raw_buf":b'',
+            "frame":[],
             "datalinker":[],
             "networklayer": {
                 "IP": [],         
@@ -325,6 +410,9 @@ class PacketParser:
             "transportlayer":[],
             "applicationlayer":[],
         }
+        # 整体frame
+        self.frame_parse(raw_data,row)
+        
         # 解析数据链路层
         self.eth_parse(raw_data)
         # 
@@ -333,6 +421,15 @@ class PacketParser:
         
         # print(self.parsedetails)
         
+        return self.parsedetails
+    
+    def frame_parse(self,raw_data,row):
+        self.parsedetails["frame"].append({
+            "label": f"Frame {row}",
+            "content": f"{len(raw_data)} bytes on interface en0",
+            "hex": raw_data.hex(),
+            "details": {}
+        })
         return self.parsedetails
     
     # eth
@@ -1144,11 +1241,11 @@ class PacketParser:
         })
 
         # 紧急指针 (Urgent Pointer)
-        urgent_pointer = tcp.urp
+        urgent_p = tcp.urp
         self.parsedetails["transportlayer"].append({
             "label": "Urgent Pointer",
-            "content": "Urgent Pointer:{urgent_pointer}",
-            "hex": hex(urgent_pointer),
+            "content": f"Urgent Pointer:{urgent_p}",
+            "hex": hex(urgent_p),
             "details": {}
         })
 
@@ -1209,9 +1306,6 @@ class PacketParser:
 
         return self.parsedetails
     
-    
-    
-
 
     def get_protocols(self, raw_data):
         """
