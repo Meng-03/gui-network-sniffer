@@ -29,17 +29,6 @@ TRANSPORT_LAYER_PROTOCOLS = {
 APP_LAYER_PORTS = {
     80: 'HTTP',           # 超文本传输协议
     53: 'DNS',            # 域名系统
-    443: 'HTTPS',         # HTTPS 安全超文本传输协议
-    # 21: 'FTP',            # 文件传输协议
-    # 22: 'SSH',            # 安全外壳协议
-    # 25: 'SMTP',           # 简单邮件传输协议
-    # 110: 'POP3',          # 邮局协议3
-    # 143: 'IMAP',          # 互联网消息访问协议
-    # 161: 'SNMP',          # 简单网络管理协议
-    # 69: 'TFTP',           # 简单文件传输协议
-    # 123: 'NTP',           # 网络时间协议
-    # 389: 'LDAP',          # 轻量目录访问协议 
-    # 1883: 'MQTT',         # 消息队列遥测传输协议
     # 可扩展其他常见应用层协议端口
 }
 
@@ -49,24 +38,23 @@ class PcapThread(QThread):
     
     def __init__(self,parent=None):
         super().__init__(parent)
-        self.running=False #start/stop pcap
-        self.captured_packets=[] #
-        self.protocol_filter = None
-        self.host_filter = None
-        self.port_filter = None
-        self.logic_operator = "and"
+        self.running=False          # 开始/停止抓包
+        self.captured_packets=[]    # 数据包记录
+        self.protocol_filter = None # 协议过滤
+        self.host_filter = None     # IP地址过滤
+        self.port_filter = None     # 端口过滤
+        self.logic_operator = "and" # 
        
-    def set_filter(self, protocol=None, host=None, port=None, logic="and"):
+    def set_filter(self, protocol=None, host=None, port=None, logic=("and", "and")):
         """设置过滤条件"""
         self.protocol_filter = protocol
         self.host_filter = host
         self.port_filter = port
-        self.logic_operator = logic.lower()
+        self.logic_operators = logic  # 逻辑运算符元组，(logic_1, logic_2)
 
     def should_filter(self):
         """检查是否需要过滤"""
-        return any([self.protocol_filter, self.host_filter, self.port_filter, self.content_filter])
-
+        return any([self.protocol_filter, self.host_filter, self.port_filter])
     
     def start(self):
         self.running=True
@@ -81,12 +69,10 @@ class PcapThread(QThread):
         """
         获取数据包
         """
-        # todo. filtercapture和capture-筛选和不筛选  
-        # todo.设备筛选
         devs=pcap.findalldevs()
         # print("设备",devs,sep='\n')
         devnum='en0'
-        getpkg=pcap.pcap(name='en0',promisc=True,immediate=True,timeout_ms=50)
+        getpkg=pcap.pcap(name=devnum,promisc=True,immediate=True,timeout_ms=50)
         for timestamp, raw_buf in getpkg:   
             if not self.running:
                 break    
@@ -97,43 +83,53 @@ class PcapThread(QThread):
             time_str=time.strftime('%H:%M:%S',time.localtime(timestamp))
             
             if not self.should_filter() or self.apply_filters(raw_buf):  
-                # parsepacket=PacketParser()
+                parsepacket=PacketParser()
+                parsepacket=parsepacket.parse(raw_buf,0)
+                print(parsepacket)
                 # 表格简单parse展示
                 simpleparse=self.simple_parse(raw_buf,time_str)
                 self.pkg_get.emit(
                     raw_buf,
-                    simpleparse["Time"],
-                    simpleparse["Source"],
-                    simpleparse["Destination"],
-                    simpleparse["Protocol"],
-                    str(simpleparse["Length"]),
-                    simpleparse["Info"]
+                    simpleparse["Time"],        # 时间
+                    simpleparse["Source"],      # 源地址
+                    simpleparse["Destination"], # 目的地址
+                    simpleparse["Protocol"],    # 协议
+                    str(simpleparse["Length"]), # 长度
+                    simpleparse["Info"]         # 数据包内容摘要
                     ) 
             # 细节parse
             # parsepacket.parse(raw_buf)
+    
     def apply_filters(self, raw_buf):
         """
         检查数据包是否满足过滤条件。
         """
         eth = dpkt.ethernet.Ethernet(raw_buf)
-        result = True if self.logic_operator == "and" else False
         
-        # 协议过滤
-        if self.protocol_filter:
-            protocol_match = self._filter_by_protocol(eth)
-            result = self._combine_results(result, protocol_match)
-        
-        # 主机和端口过滤
-        if self.host_filter or self.port_filter:
-            host_port_match = self._filter_by_host_port(eth)
-            result = self._combine_results(result, host_port_match)
-        
-        # 数据包内容过滤
-        if self.content_filter:
-            content_match = self._filter_by_content(eth)
-            result = self._combine_results(result, content_match)
+        # 应用协议过滤
+        protocol_match = self._filter_by_protocol(eth) if self.protocol_filter else True
 
-        return result
+        # 应用主机过滤
+        host_match = self._filter_by_host(eth) if self.host_filter else True
+
+        # 应用端口过滤
+        port_match = self._filter_by_port(eth) if self.port_filter else True
+
+        # 使用第一个逻辑运算符将协议和主机条件组合
+        logic_1 = self.logic_operators[0]
+        if logic_1 == "and":
+            basic_match = protocol_match and host_match
+        else:  # 默认为 "or"
+            basic_match = protocol_match or host_match
+
+        # 使用第二个逻辑运算符将 basic_match 和端口条件组合
+        logic_2 = self.logic_operators[1]
+        if logic_2 == "and":
+            final_match = basic_match and port_match
+        else:  # 默认为 "or"
+            final_match = basic_match or port_match
+
+        return final_match
     
     def _combine_results(self, current_result, new_result):
         if self.logic_operator == "and":
@@ -143,45 +139,68 @@ class PcapThread(QThread):
         return False
 
     def _filter_by_protocol(self, packet):
-        if self.protocol_filter.lower() == "tcp" and isinstance(packet.data, dpkt.tcp.TCP):
-            return True
-        elif self.protocol_filter.lower() == "udp" and isinstance(packet.data, dpkt.udp.UDP):
-            return True
-        elif self.protocol_filter.lower() == "icmp" and isinstance(packet.data, dpkt.icmp.ICMP):
-            return True
-        elif self.protocol_filter.lower() == "icmpv6" and isinstance(packet.data, dpkt.icmp6.ICMP6):
-            return True
-        elif self.protocol_filter.lower() == "arp" and isinstance(packet, dpkt.arp.ARP):
-            return True
-        elif self.protocol_filter.lower() == "ipv4" and isinstance(packet.data, dpkt.ip.IP):
-            return True
-        elif self.protocol_filter.lower() == "ipv6" and isinstance(packet.data, dpkt.ip6.IP6):
-            return True
+        """协议过滤"""
+        if isinstance(packet.data, (dpkt.ip.IP, dpkt.ip6.IP6)):
+            for protocol in self.protocol_filter:
+                protocol = protocol.lower()
+                if protocol == "tcp" and isinstance(packet.data.data, dpkt.tcp.TCP):
+                    return True
+                elif protocol == "udp" and isinstance(packet.data.data, dpkt.udp.UDP):
+                    return True
+                elif protocol == "icmp" and isinstance(packet.data, dpkt.icmp.ICMP):
+                    return True
+                elif protocol == "icmpv6" and isinstance(packet.data, dpkt.icmp6.ICMP6):
+                    return True
+                elif protocol == "arp" and isinstance(packet, dpkt.arp.ARP):
+                    return True
+                elif protocol == "ipv4" and isinstance(packet.data, dpkt.ip.IP):
+                    return True
+                elif protocol == "ipv6" and isinstance(packet.data, dpkt.ip6.IP6):
+                    return True
         return False  
     
-
-    def _filter_by_host_port(self, packet):
+    def _filter_by_host(self, packet):
+        """
+        过滤主机IP 地址。
+        """
         # 确保 packet 包含 IPv4 或 IPv6 数据
         if not isinstance(packet.data, (dpkt.ip.IP, dpkt.ip6.IP6)):
             return False
 
-        # 获取源和目标 IP 地址（直接转换为可读的字符串格式）
-        ip_src = ".".join(map(str, packet.data.src)) if isinstance(packet.data, dpkt.ip.IP) else ":".join(f"{packet.data.src[i]:02x}{packet.data.src[i+1]:02x}" for i in range(0, 16, 2))
-        ip_dst = ".".join(map(str, packet.data.dst)) if isinstance(packet.data, dpkt.ip.IP) else ":".join(f"{packet.data.dst[i]:02x}{packet.data.dst[i+1]:02x}" for i in range(0, 16, 2))
+        # 获取源和目标 IP 地址
+        ip_src = (
+            ".".join(map(str, packet.data.src))
+            if isinstance(packet.data, dpkt.ip.IP)
+            else ":".join(f"{packet.data.src[i]:02x}{packet.data.src[i+1]:02x}" for i in range(0, 16, 2))
+        )
+        ip_dst = (
+            ".".join(map(str, packet.data.dst))
+            if isinstance(packet.data, dpkt.ip.IP)
+            else ":".join(f"{packet.data.dst[i]:02x}{packet.data.dst[i+1]:02x}" for i in range(0, 16, 2))
+        )
 
+        # 主机匹配
+        if isinstance(self.host_filter, (list, set)):
+            print(self.host_filter,ip_src,ip_src)
+            return any(ip in [ip_src, ip_src] for ip in self.host_filter)
+        else:
+            return self.host_filter in [ip_src, ip_dst] if self.host_filter else True
+
+    def _filter_by_port(self, packet):
+        """
+        过滤端口号
+        """
         # 获取源和目标端口号（仅适用于 TCP/UDP）
         src_port = dst_port = None
-        if isinstance(packet.data.data, (dpkt.tcp.TCP, dpkt.udp.UDP)):
+        if isinstance(packet.data, (dpkt.ip.IP, dpkt.ip6.IP6)) and isinstance(packet.data.data, (dpkt.tcp.TCP, dpkt.udp.UDP)):
             src_port = packet.data.data.sport
             dst_port = packet.data.data.dport
 
-        # 检查主机和端口匹配情况
-        host_match = self.host_filter in [ip_src, ip_dst] if self.host_filter else True
-        port_match = self.port_filter in [src_port, dst_port] if self.port_filter else True
-
-        return host_match and port_match    
-    
-                      
+        # 端口匹配
+        if isinstance(self.port_filter, (list, set)):
+            return any(port in [src_port, dst_port] for port in self.port_filter)
+        else:
+            return self.port_filter in [src_port, dst_port] if self.port_filter else True                      
     
     def simple_parse(self,raw_buf,time_str):
         protocol_type="Unknown"
@@ -216,7 +235,7 @@ class PcapThread(QThread):
             # TCP/UDP
             if protocal_name in ['TCP', 'UDP']: 
                 src_port, dst_port = eth.data.data.sport, eth.data.data.dport  
-                app_protocol = APP_LAYER_PORTS.get(dst_port,"")  # 获取应用层协议（如 HTTP, DNS）
+                app_protocol = APP_LAYER_PORTS.get(dst_port,protocal_name)  # 获取应用层协议（如 HTTP, DNS）
                 print(app_protocol)
                 if protocal_name == "TCP":  # 处理 TCP 数据
                     protocol_type = protocal_name
@@ -378,21 +397,16 @@ class PcapThread(QThread):
         print(output)               
         return output                     
             
-    
-    def save(self):
-        """
-        保存
-        """ 
         
         
         
 class PacketParser:
     def __init__(self):
-        self.DATALINK_TYPES = DATALINK_TYPES
-        self.NETWORK_LAYER_PROTOCOLS = NETWORK_LAYER_PROTOCOLS
-        self.TRANSPORT_LAYER_PROTOCOLS = TRANSPORT_LAYER_PROTOCOLS
-        self.APP_LAYER_PORTS = APP_LAYER_PORTS
-        self.parsedetails={}
+        self.DATALINK_TYPES = DATALINK_TYPES                        # 支持的数据链路层协议
+        self.NETWORK_LAYER_PROTOCOLS = NETWORK_LAYER_PROTOCOLS      # 支持的网络层协议
+        self.TRANSPORT_LAYER_PROTOCOLS = TRANSPORT_LAYER_PROTOCOLS  # 支持的传输层协议
+        self.APP_LAYER_PORTS = APP_LAYER_PORTS                      # 支持的应用层协议
+        self.parsedetails={}                                        # 数据包解析出的细节记录
         
       
     def parse(self,raw_data,row):
@@ -425,13 +439,12 @@ class PacketParser:
     
     def frame_parse(self,raw_data,row):
         self.parsedetails["frame"].append({
-            "label": f"Frame {row}",
+            "label": f"Frame {row+1}",
             "content": f"{len(raw_data)} bytes on interface en0",
             "hex": raw_data.hex(),
             "details": {}
         })
-        return self.parsedetails
-    
+        return self.parsedetails   
     # eth
     def eth_parse(self,raw_data):
         """
@@ -479,7 +492,7 @@ class PacketParser:
         # print(self.parsedetails,"\n\n")
         return self.parsedetails
              
-    # ip （icmp,igmp） arp
+    # ip （icmp） arp
     def networklayer(self,raw_data):
         eth = dpkt.ethernet.Ethernet(raw_data)
         eth_type = eth.type
@@ -508,6 +521,14 @@ class PacketParser:
 
         # 版本
         version_binary = f"{ip.v:04b} ...."
+        self.parsedetails["networklayer"]["IP"].append({
+            "label": "Name",
+            "content": f"Internet Protocol Version 4",
+            "hex": "",
+            "details":{}            
+        })
+        
+        
         self.parsedetails["networklayer"]["IP"].append({
             "label": "Version",
             "content": f"{version_binary} = Version: {ip.v}",
@@ -544,7 +565,7 @@ class PacketParser:
         # 总长度
         self.parsedetails["networklayer"]["IP"].append({
             "label": "Total Length",
-            "content": f"Total Length: {ip.len:016b}",
+            "content": f"Total Length: {ip.len}",
             "hex": hex(ip.len),
             "details": {}
         })
@@ -552,7 +573,7 @@ class PacketParser:
         # 标识符
         self.parsedetails["networklayer"]["IP"].append({
             "label": "Identification",
-            "content": f"Identification: {ip.id:016b}",
+            "content": f"Identification: 0x{hex(ip.id)}",
             "hex": hex(ip.id),
             "details": {}
         })
@@ -568,13 +589,12 @@ class PacketParser:
         
         self.parsedetails["networklayer"]["IP"].append({
             "label": "Flags",
-            "content": f"0x{flags:02x}",
+            "content": f"Flags: 0x{flags:02x}",
             "hex": hex(flags),
             "details": {
-                "reserved_bit": f"{flags_binary} = Reserved bit: {'Set' if reserved_bit else 'Not set'}",
-                "dont_fragment": f".{dont_fragment:1b} .... = Don't fragment: {'Set' if dont_fragment else 'Not set'}",
-                "more_fragments": f"..{more_fragments:1b} .... = More fragments: {'Set' if more_fragments else 'Not set'}",
-                "binary": flags_binary
+                "reserved_bit": f"{reserved_bit}... .... = Reserved bit: {'Set' if reserved_bit else 'Not set'}",
+                "dont_fragment": f".{dont_fragment:1b}.. .... = Don't fragment: {'Set' if dont_fragment else 'Not set'}",
+                "more_fragments": f"..{more_fragments:1b}. .... = More fragments: {'Set' if more_fragments else 'Not set'}",
             }
         })
         
@@ -590,7 +610,7 @@ class PacketParser:
         # 生存时间 (TTL)
         self.parsedetails["networklayer"]["IP"].append({
             "label": "Time to Live",
-            "content": f"Time to Live: {ip.ttl:08b}",
+            "content": f"Time to Live: {ip.ttl}",
             "hex": hex(ip.ttl),
             "details": {}
         })
@@ -599,7 +619,7 @@ class PacketParser:
         protocol_name = self.TRANSPORT_LAYER_PROTOCOLS.get(ip.p, f"Protocol ({ip.p})")
         self.parsedetails["networklayer"]["IP"].append({
             "label": "Protocol",
-            "content": f"{protocol_name} ({ip.p})",
+            "content": f"Protocol: {protocol_name} ({ip.p})",
             "hex": hex(ip.p),
             "details": {}
         })
@@ -614,22 +634,22 @@ class PacketParser:
         })
         # 源地址
         src_ip_decimal = f"{ip.src[0]}.{ip.src[1]}.{ip.src[2]}.{ip.src[3]}"
-        src_ip_binary = '.'.join(f"{octet:08b}" for octet in ip.src)
+        # src_ip_binary = '.'.join(f"{octet:08b}" for octet in ip.src)
 
         self.parsedetails["networklayer"]["IP"].append({
             "label": "Source Address",
-            "content": f"{src_ip_decimal} ({src_ip_binary})",
+            "content": f"Source Address: {src_ip_decimal}",
             "hex": ip.src.hex(),
             "details": {}
         })
 
         # 目的地址
         dst_ip_decimal = f"{ip.dst[0]}.{ip.dst[1]}.{ip.dst[2]}.{ip.dst[3]}"
-        dst_ip_binary = '.'.join(f"{octet:08b}" for octet in ip.dst)
+        # dst_ip_binary = '.'.join(f"{octet:08b}" for octet in ip.dst)
 
         self.parsedetails["networklayer"]["IP"].append({
             "label": "Destination Address",
-            "content": f"{dst_ip_decimal} ({dst_ip_binary})",
+            "content": f"Destination Address: {dst_ip_decimal}",
             "hex": ip.dst.hex(),
             "details": {}
         })
@@ -650,7 +670,13 @@ class PacketParser:
         解析 IPv6 协议
         """
         ip6 = ipv6_data
-
+        
+        self.parsedetails["networklayer"]["IP"].append({
+            "label": "Name",
+            "content": f"Internet Protocol Version 6",
+            "hex": "",
+            "details":{}            
+        })
         # 版本
         version_binary = f"{ip6.v:04b} ...."
         self.parsedetails["networklayer"]["IP"].append({
@@ -743,6 +769,12 @@ class PacketParser:
         解析 ARP 协议
         """
         arp = arp_data
+        self.parsedetails["networklayer"].append({
+            "label": "Name",
+            "content": f"Address Resolution Protocol",
+            "hex": "",
+            "details":{}            
+        })
 
         # 硬件类型 (Hardware Type)
         hardware_type = arp.hrd
@@ -920,9 +952,7 @@ class PacketParser:
             "details": {}
         })
 
-        return self.parsedetails
-     
-        
+        return self.parsedetails      
       
     # icmp, icmpv6
     def icmp_parse(self, icmp_data):
@@ -930,7 +960,13 @@ class PacketParser:
         解析 ICMP 协议
         """
         icmp = icmp_data
-
+        self.parsedetails["networklayer"]["ICMP"].append({
+            "label": "Name",
+            "content": f"Internet Control Message Protocol",
+            "hex": "",
+            "details": {}
+        })  
+        
         # ICMP 类型 (Type)
         icmp_type = icmp.type
         type_description = {
@@ -968,7 +1004,7 @@ class PacketParser:
         checksum_hex = f"0x{icmp.sum:04x}"
         self.parsedetails["networklayer"]["ICMP"].append({
             "label": "Checksum",
-            "content": f"Checksum: {checksum_hex} [correct]",
+            "content": f"Checksum: {checksum_hex}",
             "hex": checksum_hex,
             "details": {}
         })
@@ -989,6 +1025,13 @@ class PacketParser:
         解析 ICMPv6 协议（例如 Router Advertisement 类型）
         """
         icmpv6 = icmpv6_data
+
+        self.parsedetails["networklayer"]["ICMP"].append({
+            "label": "Name",
+            "content": f"Internet Control Message Protocol version 6",
+            "hex": "",
+            "details": {}
+        }) 
 
         # ICMPv6 类型
         icmpv6_type = icmpv6.type
@@ -1106,26 +1149,12 @@ class PacketParser:
 
             offset += option_length
 
-        return self.parsedetails
-        
-        
+        return self.parsedetails      
         
     # tcp udp 
     def tcp_parse(self, tcp_data):
         """
         解析 TCP 协议
-        dpkt.tcp.TCP 
-        Attributes:
-        sport - source port
-        dport - destination port
-        seq   - sequence number
-        ack   - acknowledgement number
-        off   - data offset in 32-bit words
-        flags - TCP flags
-        win   - TCP window size
-        sum   - checksum
-        urp   - urgent pointer
-        opts  - TCP options buffer; call parse_opts() to parse
         """
         tcp = tcp_data
         TH_FIN = 0x01
@@ -1138,6 +1167,13 @@ class PacketParser:
         TH_CWR = 0x80
         TH_NS = 0x100
 
+        self.parsedetails["transportlayer"].append({
+            "label": "Name",
+            "content": f"Transmission Control Protocol",
+            "hex": "",
+            "details": {}
+        })
+        
         # 源端口 (Source Port)
         source_port = tcp.sport
         self.parsedetails["transportlayer"].append({
@@ -1249,13 +1285,32 @@ class PacketParser:
             "details": {}
         })
 
+
+        # 源端口 (Source Port)
+        source_port = tcp_data.sport
+        # 目标端口 (Destination Port)
+        destination_port = tcp_data.dport
+
+        # 判断是否是 HTTP，若是则调用 http_parse
+        if destination_port == 80 or source_port == 80:
+            # HTTP 解析调用
+            if tcp_data.data:  # 检查是否有有效的应用层数据
+                self.http_parse(tcp_data.data)
+
+        
         return self.parsedetails
         
     def udp_parse(self, udp_data):
         """
         解析 UDP 协议
         """
-        udp = udp_data  
+        udp = udp_data
+        self.parsedetails["transportlayer"].append({
+            "label": "Name",
+            "content": f"User Datagram Protocol",
+            "hex": "",
+            "details": {}
+        })  
 
         # 源端口 (Source Port)
         source_port = udp.sport
@@ -1303,95 +1358,145 @@ class PacketParser:
             "content": f"UDP payload: {payload_length} bytes",
             "details": {}
         })
+        
+        # 源端口 (Source Port)
+        source_port = udp_data.sport
+        # 目标端口 (Destination Port)
+        destination_port = udp_data.dport
+
+        # 判断是否是 DNS，若是则调用 dns_parse
+        if destination_port == 53 or source_port == 53:
+            # DNS 解析调用
+            if udp_data.data:  # 检查是否有有效的应用层数据
+                self.dns_parse(udp_data.data)
 
         return self.parsedetails
     
-
-    def get_protocols(self, raw_data):
-        """
-        获取数据包中包含的协议栈
-        """
-        protocols = []
-        
-        try:
-            # 数据链路层
-            protocols.append("eth") #未进行其他种类的抓包
-            eth = dpkt.ethernet.Ethernet(raw_data)
-            datalink_type = eth.type
-            
-            # 网络层
-            # network_protocol = self.NETWORK_LAYER_PROTOCOLS.get(datalink_type, "unknown_ethertype")
-            # protocols.append(network_protocol.lower())
-
-            # 如果是 IPv4
-            ip = eth.data
-            if isinstance(ip, dpkt.ip.IP):
-                protocols.append("ip")
-
-                # 传输层协议识别
-                transport_protocol = self.TRANSPORT_LAYER_PROTOCOLS.get(ip.p, "unknown_transport")
-                protocols.append(transport_protocol.lower())
-
-                # TCP 或 UDP 应用层协议识别
-                if ip.p == dpkt.ip.IP_PROTO_TCP:
-                    tcp = ip.data
-                    if isinstance(tcp, dpkt.tcp.TCP):
-                        print("tcp",tcp,tcp.dport,tcp.sport)
-                        app_protocol = self.APP_LAYER_PORTS.get(tcp.dport) or self.APP_LAYER_PORTS.get(tcp.sport)
-                        if app_protocol:
-                            protocols.append(app_protocol.lower())
-
-                elif ip.p == dpkt.ip.IP_PROTO_UDP:
-                    udp = ip.data
-                    if isinstance(udp, dpkt.udp.UDP):
-                        app_protocol = self.APP_LAYER_PORTS.get(udp.dport) or self.APP_LAYER_PORTS.get(udp.sport)
-                        if app_protocol:
-                            protocols.append(app_protocol.lower())
-
-            # 如果是 IPv6
-            elif isinstance(ip, dpkt.ip6.IP6):
-                protocols.append("ipv6")
-
-                # 传输层协议识别
-                transport_protocol = self.TRANSPORT_LAYER_PROTOCOLS.get(ip.nxt, "unknown_transport")
-                protocols.append(transport_protocol.lower())
-
-                # IPv6 的 TCP 或 UDP 应用层协议识别
-                if ip.nxt == dpkt.ip.IP_PROTO_TCP:
-                    tcp = ip.data
-                    if isinstance(tcp, dpkt.tcp.TCP):
-                        app_protocol = self.APP_LAYER_PORTS.get(tcp.dport) or self.APP_LAYER_PORTS.get(tcp.sport)
-                        if app_protocol:
-                            protocols.append(app_protocol.lower())
-
-                elif ip.nxt == dpkt.ip.IP_PROTO_UDP:
-                    udp = ip.data
-                    if isinstance(udp, dpkt.udp.UDP):
-                        app_protocol = self.APP_LAYER_PORTS.get(udp.dport) or self.APP_LAYER_PORTS.get(udp.sport)
-                        if app_protocol:
-                            protocols.append(app_protocol.lower())
-
-            # 如果是 ARP 协议
-            elif datalink_type == 0x0806:
-                protocols.append("arp")
-
-            # 如果是 RARP 协议
-            elif datalink_type == 0x8035:
-                protocols.append("rarp")
-
-        except Exception as e:
-            protocols.append("unknown_format")
-
-        
-        #根据不同的路径得到解析
-        parsedetails={
-            "raw_buf":b'',
-            "以太网帧(Ethernet II)":[],
-            
-        }
-        
-        return parsedetails,protocols
     
+    def dns_parse(self, dns_data):
+        """
+        使用 dpkt 解析 DNS 协议
+        """
+        # dns = dns_data
+        dns = dpkt.dns.DNS(dns_data)
+
+        self.parsedetails["applicationlayer"].append({
+            "label": "Name",
+            "content": f"Domain Name System",
+            "hex": "",
+            "details": {}
+        })  
+          
+        transaction_id = dns.id
+        self.parsedetails["applicationlayer"].append({
+            "label": "Transaction ID",
+            "content": f"Transaction ID: 0x{transaction_id:04x}",
+            "hex": hex(transaction_id),
+            "details": {}
+        })
+
+        # 操作码 (Opcode)
+        opcode = dns.op  # 操作码字段，直接访问 `op` 属性
+        self.parsedetails["applicationlayer"].append({
+            "label": "Opcode",
+            "content": f"Opcode: {opcode}",
+            "details": {}
+        })
+
+        # 解析 DNS 查询记录 (Questions)
+        questions = [{"name": q.name, "type": q.type, "class": q.cls} for q in dns.qd]
+        self.parsedetails["applicationlayer"].append({
+            "label": "Questions",
+            "content": f"{len(questions)} Questions",
+            "details": questions
+        })
+
+        # 解析 DNS 回答记录 (Answers)
+        answers = [{"name": ans.name, "type": ans.type, "class": ans.cls, "ttl": ans.ttl, "data": str(ans.rdata)} for ans in dns.an]
+        self.parsedetails["applicationlayer"].append({
+            "label": "Answers",
+            "content": f"{len(answers)} Answers",
+            "details": answers
+        })
+
+        # 解析 DNS 权威记录 (Authority Records)
+        authority_records = [{"name": auth.name, "type": auth.type, "class": auth.cls, "ttl": auth.ttl, "data": str(auth.rdata)} for auth in dns.ns]
+        self.parsedetails["applicationlayer"].append({
+            "label": "Authority Records",
+            "content": f"{len(authority_records)} Authority Records",
+            "details": authority_records
+        })
+
+        # 解析 DNS 附加记录 (Additional Records)
+        additional_records = [{"name": add.name, "type": add.type, "class": add.cls, "ttl": add.ttl, "data": str(add.rdata)} for add in dns.ar]
+        self.parsedetails["applicationlayer"].append({
+            "label": "Additional Records",
+            "content": f"{len(additional_records)} Additional Records",
+            "details": additional_records
+        })
+
+        return self.parsedetails
+
+    def http_parse(self, http_data):
+        """
+        使用 dpkt 解析 HTTP 协议
+        """
+        is_request = None  # 初始化 is_request 变量
+
+
+        self.parsedetails["applicationlayer"].append({
+            "label": "Name",
+            "content": f"Hypertext Transfer Protocol",
+            "hex": "",
+            "details": {}
+        })  
+
+        try:
+            # 尝试将数据解析为 HTTP 请求
+            http = dpkt.http.Request(http_data)
+            is_request = True
+        except (dpkt.dpkt.NeedData, dpkt.dpkt.UnpackError):
+            try:
+                # 如果解析失败，则尝试解析为 HTTP 响应
+                http = dpkt.http.Response(http_data)
+                is_request = False
+            except (dpkt.dpkt.NeedData, dpkt.dpkt.UnpackError):
+                return self.parsedetails
+
+        if is_request is True:
+            # 解析 HTTP 请求信息
+            self.parsedetails["applicationlayer"].append({
+                "label": "HTTP Request",
+                "content": f"Method: {http.method}, URI: {http.uri}, Version: {http.version}",
+                "details": {}
+            })
+        elif is_request is False:
+            # 解析 HTTP 响应信息
+            self.parsedetails["applicationlayer"].append({
+                "label": "HTTP Response",
+                "content": f"Version: HTTP/{http.version}, Status: {http.status}, Reason: {http.reason}",
+                "details": {}
+            })
+
+        # 解析 HTTP 头部信息
+        headers = {k: v for k, v in http.headers.items()}
+        self.parsedetails["applicationlayer"].append({
+            "label": "HTTP Headers",
+            "content": f"Headers: {len(headers)} headers",
+            "details": headers
+        })
+
+        # 解析 HTTP 主体内容（如果存在）
+        body_length = len(http.body)
+        self.parsedetails["applicationlayer"].append({
+            "label": "HTTP Body",
+            "content": f"Body Length: {body_length} bytes",
+            "details": {}
+        })
+
+        return self.parsedetails
+
+
 
 if __name__ == "__main__":
     import pcap
