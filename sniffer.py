@@ -85,7 +85,7 @@ class PcapThread(QThread):
             if not self.should_filter() or self.apply_filters(raw_buf):  
                 parsepacket=PacketParser()
                 parsepacket=parsepacket.parse(raw_buf,0)
-                print(parsepacket)
+                # print(parsepacket)
                 # 表格简单parse展示
                 simpleparse=self.simple_parse(raw_buf,time_str)
                 self.pkg_get.emit(
@@ -117,26 +117,20 @@ class PcapThread(QThread):
 
         # 使用第一个逻辑运算符将协议和主机条件组合
         logic_1 = self.logic_operators[0]
-        if logic_1 == "and":
-            basic_match = protocol_match and host_match
-        else:  # 默认为 "or"
+        if logic_1 == "or":
             basic_match = protocol_match or host_match
+        else:  # 默认为 "or"
+            basic_match = protocol_match and host_match
 
         # 使用第二个逻辑运算符将 basic_match 和端口条件组合
         logic_2 = self.logic_operators[1]
-        if logic_2 == "and":
-            final_match = basic_match and port_match
-        else:  # 默认为 "or"
+        if logic_2 == "or":
             final_match = basic_match or port_match
+        else:  # 默认为 "or"
+            final_match = basic_match and port_match
 
+        print(final_match)
         return final_match
-    
-    def _combine_results(self, current_result, new_result):
-        if self.logic_operator == "and":
-            return current_result and new_result
-        elif self.logic_operator == "or":
-            return current_result or new_result
-        return False
 
     def _filter_by_protocol(self, packet):
         """协议过滤"""
@@ -160,6 +154,7 @@ class PcapThread(QThread):
         return False  
     
     def _filter_by_host(self, packet):
+        
         """
         过滤主机IP 地址。
         """
@@ -179,12 +174,16 @@ class PcapThread(QThread):
             else ":".join(f"{packet.data.dst[i]:02x}{packet.data.dst[i+1]:02x}" for i in range(0, 16, 2))
         )
 
-        # 主机匹配
+                # 仅当源或目标 IP 地址与 host_filter 完全匹配时才通过
+        
         if isinstance(self.host_filter, (list, set)):
-            print(self.host_filter,ip_src,ip_src)
-            return any(ip in [ip_src, ip_src] for ip in self.host_filter)
+            # 如果 host_filter 是一个列表或集合，检查源或目标 IP 是否在 host_filter 中
+            print(self.host_filter,ip_src,ip_dst,ip_src in self.host_filter or ip_dst in self.host_filter)
+            return ip_src in self.host_filter or ip_dst in self.host_filter
         else:
-            return self.host_filter in [ip_src, ip_dst] if self.host_filter else True
+            # 如果 host_filter 是一个字符串，检查源或目标 IP 是否与 host_filter 匹配
+            print(self.host_filter,ip_src,ip_dst,ip_src in self.host_filter or ip_dst in self.host_filter)
+            return self.host_filter == ip_src or self.host_filter == ip_dst
 
     def _filter_by_port(self, packet):
         """
@@ -236,7 +235,7 @@ class PcapThread(QThread):
             if protocal_name in ['TCP', 'UDP']: 
                 src_port, dst_port = eth.data.data.sport, eth.data.data.dport  
                 app_protocol = APP_LAYER_PORTS.get(dst_port,protocal_name)  # 获取应用层协议（如 HTTP, DNS）
-                print(app_protocol)
+                # print(app_protocol)
                 if protocal_name == "TCP":  # 处理 TCP 数据
                     protocol_type = protocal_name
                     tcp = eth.data.data  # 获取 TCP 对象（从 IP 数据中提取）
@@ -769,7 +768,7 @@ class PacketParser:
         解析 ARP 协议
         """
         arp = arp_data
-        self.parsedetails["networklayer"].append({
+        self.parsedetails["networklayer"]["IP"].append({
             "label": "Name",
             "content": f"Address Resolution Protocol",
             "hex": "",
@@ -800,7 +799,7 @@ class PacketParser:
         hardware_size = arp.hln
         self.parsedetails["networklayer"]["IP"].append({
             "label": "Hardware Size",
-            "content": str(hardware_size),
+            "content": f"Hardware Size: {str(hardware_size)}",
             "hex": hex(hardware_size),
             "details": {}
         })
@@ -809,7 +808,7 @@ class PacketParser:
         protocol_size = arp.pln
         self.parsedetails["networklayer"]["IP"].append({
             "label": "Protocol Size",
-            "content": str(protocol_size),
+            "content": f"Protocol Size: {str(protocol_size)}",
             "hex": hex(protocol_size),
             "details": {}
         })
@@ -819,7 +818,7 @@ class PacketParser:
         opcode_str = "request" if opcode == 1 else "reply" if opcode == 2 else f"Unknown ({opcode})"
         self.parsedetails["networklayer"]["IP"].append({
             "label": "Opcode",
-            "content": f"{opcode_str} ({opcode})",
+            "content": f"Opcode: {opcode_str} ({opcode})",
             "hex": hex(opcode),
             "details": {}
         })

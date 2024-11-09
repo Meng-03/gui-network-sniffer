@@ -176,7 +176,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
         
         # 处理 Network Layer 层
-        # 处理 IP 子项----【todo】details展示
         ip_item = QTreeWidgetItem(self.PacketTree) 
         self.PacketTree.addTopLevelItem(ip_item)  
         ip_name=packet_details.get("networklayer", {}).get("IP", [])[0]["content"]

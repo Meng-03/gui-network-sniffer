@@ -135,11 +135,11 @@ class Ui_MainWindow(object):
         self.label.setText(QCoreApplication.translate("MainWindow", u"\u534f\u8bae", None))
         self.label_2.setText(QCoreApplication.translate("MainWindow", u"IP\u5730\u5740", None))
         self.label_3.setText(QCoreApplication.translate("MainWindow", u"\u7aef\u53e3", None))
-        self.logic_input1.setItemText(0, QCoreApplication.translate("MainWindow", u"or", None))
-        self.logic_input1.setItemText(1, QCoreApplication.translate("MainWindow", u"and", None))
+        self.logic_input1.setItemText(0, QCoreApplication.translate("MainWindow", u"and", None))
+        self.logic_input1.setItemText(1, QCoreApplication.translate("MainWindow", u"or", None))
 
-        self.logic_input2.setItemText(0, QCoreApplication.translate("MainWindow", u"or", None))
-        self.logic_input2.setItemText(1, QCoreApplication.translate("MainWindow", u"and", None))
+        self.logic_input2.setItemText(0, QCoreApplication.translate("MainWindow", u"and", None))
+        self.logic_input2.setItemText(1, QCoreApplication.translate("MainWindow", u"or", None))
 
         self.label_4.setText(QCoreApplication.translate("MainWindow", u"<html><head/><body><p><span style=\" font-size:14pt;\">[Tag]Meng\u7684\u6293\u5305</span></p></body></html>", None))
         self.label_5.setText(QCoreApplication.translate("MainWindow", u"<html><head/><body><p><span style=\" font-size:14pt;\">[Tag]202428015059013</span></p></body></html>", None))

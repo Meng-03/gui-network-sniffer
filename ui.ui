@@ -206,12 +206,12 @@
     </property>
     <item>
      <property name="text">
-      <string>or</string>
+      <string>and</string>
      </property>
     </item>
     <item>
      <property name="text">
-      <string>and</string>
+      <string>or</string>
      </property>
     </item>
    </widget>
@@ -226,12 +226,12 @@
     </property>
     <item>
      <property name="text">
-      <string>or</string>
+      <string>and</string>
      </property>
     </item>
     <item>
      <property name="text">
-      <string>and</string>
+      <string>or</string>
      </property>
     </item>
    </widget>
